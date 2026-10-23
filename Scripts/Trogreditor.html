@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Macro Hotbar GUI</title>
+<style>
+  /* ================= MEMO (main panel) ================= */
+  .memo-container {
+    max-width: 600px; margin: 20px auto; background: #fff;
+    padding: 20px; border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,.1);
+  }
+  label { font-weight: bold; display: block; margin-bottom: 8px; }
+  textarea {
+    width: 100%; height: 200px; padding: 10px;
+    border: 1px solid #ccc; border-radius: 4px;
+    box-sizing: border-box; resize: vertical;
+  }
+  .status { margin-top: 10px; font-size: .9em; color: #666; text-align: right; }
+
+  /* ================= GLOBAL ================= */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column; overflow: hidden;
+    background: #b7b3e3; color: #000;
+    font: 12px Arial, Helvetica, sans-serif;
+  }
+
+  /* render hosts disappear from layout */
+  #left_host, #bottom_host { display: contents; }
+
+  /* ================= TOP MENU ================= */
+  #topmenu_container {
+    position: relative; flex: none; height: 66px;
+    padding-left: 10vw; background: #fff;
+    border-bottom: 3px solid #000;
+  }
+  #topmenu_inner {
+    display: inline-block; vertical-align: top;
+    width: 80vw; height: 64px; background: #ccc;
+    font-size: 0;
+  }
+  .top_button {
+    display: inline-block; vertical-align: top;
+    width: 62px; height: 62px; background: #bdbdbd;
+    border: 2px solid #000; cursor: pointer;
+  }
+  .top_button:hover { background: #a6a6a6; }
+  .top_button.spacer { width: 5vw; background: none; border: none; cursor: default; }
+  #topmenu_button_right {
+    position: absolute; top: 1px; right: 2vw;
+    width: 62px; height: 61px; background: #bdbdbd;
+    border: 2px solid #000; cursor: pointer;
+  }
+  #topmenu_button_right:hover { background: #a6a6a6; }
+
+  /* ================= MIDDLE ================= */
+  #middle { flex: 1; min-height: 0; display: flex; }
+  #left_panel {
+    flex: none; width: 23vw; background: #fff;
+    overflow-y: scroll; overflow-x: hidden;
+  }
+  #main_panel {
+    flex: 1; background: #fff;
+    border-left: 3px solid #000; border-right: 3px solid #000;
+    border-bottom: 3px solid #000; overflow: scroll;
+  }
+  .left_item {
+    padding: 9px 12px; border-bottom: 1px solid #ccc; cursor: pointer;
+  }
+  .left_item:hover { background: #ececec; }
+
+  /* ---- scrollbars ---- */
+  #left_panel::-webkit-scrollbar,
+  #main_panel::-webkit-scrollbar { width: 16px; }
+  #left_panel::-webkit-scrollbar-track,
+  #main_panel::-webkit-scrollbar-track { background: #cfcbe8; }
+  #left_panel::-webkit-scrollbar-thumb,
+  #main_panel::-webkit-scrollbar-thumb { background: #9a9a9a; border: 2px solid #000; }
+  ::-webkit-scrollbar-button:single-button {
+    height: 16px; background-color: #cfcbe8;
+    background-repeat: no-repeat; background-position: center; background-size: 8px 8px;
+    border: 2px solid #000;
+  }
+  ::-webkit-scrollbar-button:single-button:vertical:decrement {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 1 L9 8 L1 8 Z' fill='%23000'/%3E%3C/svg%3E");
+  }
+  ::-webkit-scrollbar-button:single-button:vertical:increment {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 9 L1 2 L9 2 Z' fill='%23000'/%3E%3C/svg%3E");
+  }
+
+  /* ================= BOTTOM MENU ================= */
+  #bottom_menu { flex: none; padding: 8px 10vw 10px 10vw; }
+
+  #hotbar_tabs { position: relative; height: 24px; }
+  .tab {
+    position: absolute; bottom: 0; height: 24px;
+    padding: 3px 10px 0 14px; background: #e6e6e6;
+    border: 2px solid #000; border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    white-space: nowrap; overflow: hidden;
+    font-size: 12px; line-height: 17px;
+  }
+  .tab.active { background: #bfbfbf; }
+
+  #hotbar {
+    display: flex; gap: 5px;
+    position: relative; z-index: 10;
+  }
+  .slot {
+    position: relative;
+    width: 58px; height: 58px;
+    background: #fff; border: 3px solid #000;
+    cursor: pointer;
+  }
+  .slot:hover { background: #e6e6ff; }
+  .slot_num {
+    position: absolute; bottom: 1px; right: 3px;
+    font-size: 9px; color: #999; pointer-events: none;
+  }
+
+  /* small nav strip under the slots */
+  #hotbar_nav {
+    display: flex; justify-content: center; align-items: center;
+    gap: 5px; margin-top: 5px; font-size: 10px; line-height: 1;
+  }
+  .nav_btn {
+    min-width: 20px; height: 16px; line-height: 12px;
+    text-align: center; background: #d5d5d5;
+    border: 2px solid #000; border-radius: 4px;
+    cursor: pointer; padding: 0 5px; user-select: none;
+  }
+  .nav_btn:hover { background: #b5b5b5; }
+  .nav_btn.wide { min-width: 34px; }
+  #hotbar_counter {
+    padding: 0 8px; font-weight: bold; color: #222;
+  }
+</style>
+
+<script>
+/* =========================================================================
+   1. STATE
+   ========================================================================= */
+var State = {
+  hotbar_count: 10,
+  slots_per_hotbar: 12,
+  current: 1,
+  recent: [1],               // most-recently-used first
+  hotbar_keymap: {},         // Alt+Shift+N  ->  hotbar index
+  bindings: {},              // bindings[bar][slot] = op name
+  states: {},                // states[bar] = readout string
+  replace: { active: false, phase: null, target: null }
+};
+
+var AVAILABLE_OPS = ['— none —', 'Copy', 'Paste', 'Run Macro', 'Undo', 'Redo'];
+
+(function init_state() {
+  for (var i = 1; i <= State.hotbar_count; i++) {
+    State.hotbar_keymap[i] = i;
+    State.bindings[i] = {};
+    State.states[i] = 'state1=val' + i + ', state2=val' + i + ', state3=val' + i;
+    for (var j = 1; j <= State.slots_per_hotbar; j++) {
+      State.bindings[i][j] = '— none —';
+    }
+  }
+})();
+
+/* Holds the current left-menu items so click handlers can resolve them. */
+var LeftMenu = { items: [] };
+
+/* =========================================================================
+   2. DISPATCH  — every click lands here
+   ========================================================================= */
+function button_click(Menu, Number) {
+  if (Menu === 'top')    return on_top_click(Number);
+  if (Menu === 'left')   return on_left_click(Number);
+  if (Menu === 'hotbar') return on_slot_click(Number);
+  if (Menu === 'nav')    return on_nav_click(Number);
+}
+
+function on_top_click(n)  { alert('Top menu ' + n + ' pressed'); }
+
+function on_left_click(n) {
+  var item = LeftMenu.items[n - 1];
+  if (item && item.on_click) item.on_click();
+}
+
+function on_slot_click(n) {
+  if (State.replace.active) { cancel_replace(); return; }
+  var op = State.bindings[State.current][n] || '— none —';
+  alert('Hotbar ' + State.current + ' · slot ' + n + ' → ' + op);
+}
+
+function on_nav_click(n) {
+  if (n === 1) return hotbar_step(-1);
+  if (n === 2) return hotbar_toggle_recent();
+  if (n === 3) return hotbar_step(+1);
+}
+
+/* =========================================================================
+   3. BUILDERS — TOP
+   ========================================================================= */
+function make_button(Menu, Number) {
+  return '<div class="' + Menu + '_button" ' +
+         'onclick="button_click(\'' + Menu + '\',' + Number + ')"></div>';
+}
+
+function top_menu(Contents) {
+  return '<div id="topmenu_container">' +
+           '<div id="topmenu_inner">' + Contents + '</div>' +
+           '<div id="topmenu_button_right" ' +
+                'onclick="button_click(\'top\',99)"></div>' +
+         '</div>';
+}
+
+function top_menu_contents() {
+  return make_button('top', 1) +
+         make_button('top', 2) +
+         make_button('top', 3) +
+         make_button('top', 4) +
+         '<div class="top_button spacer"></div>' +
+         make_button('top', 5);
+}
+
+/* =========================================================================
+   4. BUILDERS — LEFT
+   ========================================================================= */
+function left_menu(Items) {
+  var html = '';
+  for (var i = 0; i < Items.length; i++) {
+    html += '<div class="left_item" ' +
+              'onclick="button_click(\'left\',' + (i + 1) + ')">' +
+              Items[i].label +
+            '</div>';
+  }
+  return '<div id="left_panel">' + html + '</div>';
+}
+
+/* ---- which items are shown in the left panel right now ---- */
+function build_left_menu_items() {
+  if (!State.replace.active)                  return default_left_items();
+  if (State.replace.phase === 'await-hotbar') return hotbar_picker_items();
+  if (State.replace.phase === 'await-op')     return op_picker_items();
+  return awaiting_combo_items();
+}
+
+function default_left_items() {
+  return [
+    { label: 'Left item 1', on_click: function(){ alert('Left item 1'); } },
+    { label: 'Left item 2', on_click: function(){ alert('Left item 2'); } },
+    { label: 'Left item 3', on_click: function(){ alert('Left item 3'); } },
+    { label: 'Left item 4', on_click: function(){ alert('Left item 4'); } }
+  ];
+}
+
+function awaiting_combo_items() {
+  return [
+    { label: 'Replace mode — press Alt+Shift+N or Ctrl+Shift+N', on_click: function(){} },
+    { label: 'Cancel', on_click: cancel_replace }
+  ];
+}
+
+function hotbar_picker_items() {
+  var items = [];
+  for (var i = 1; i <= State.hotbar_count; i++) {
+    items.push({ label: 'Bind to Hotbar ' + i, on_click: make_pick_hotbar(i) });
+  }
+  return items;
+}
+function make_pick_hotbar(h) {
+  return function() { replace_pick_hotbar(h); };
+}
+
+function op_picker_items() {
+  var items = [];
+  for (var i = 0; i < AVAILABLE_OPS.length; i++) {
+    items.push({ label: AVAILABLE_OPS[i], on_click: make_pick_op(AVAILABLE_OPS[i]) });
+  }
+  return items;
+}
+function make_pick_op(op) {
+  return function() { replace_pick_op(op); };
+}
+
+/* =========================================================================
+   5. BUILDERS — BOTTOM
+   ========================================================================= */
+function bottom_menu() {
+  return '<div id="bottom_menu">' +
+           hotbar_tabs() +
+           '<div id="hotbar">' + hotbar_slots() + '</div>' +
+           hotbar_nav() +
+         '</div>';
+}
+
+function hotbar_tabs() {
+  var cur = State.current;
+  var html = '<div id="hotbar_tabs">';
+
+  /* ghost tabs: peek out behind the active one (max 2) */
+  var ghosts = [];
+  for (var i = 1; i < State.recent.length && ghosts.length < 2; i++) {
+    ghosts.push(State.recent[i]);
+  }
+  for (var k = ghosts.length - 1; k >= 0; k--) {
+    var left  = 40 + 20 * k;
+    var width = 420 + 20 * k;
+    html += '<div class="tab" style="left:' + left + 'px; width:' + width +
+            'px; z-index:' + (k + 1) + ';"></div>';
+  }
+
+  /* state readout, sits behind the active tab */
+  html += '<div class="tab" style="left:20px; width:400px; z-index:3; padding-left:122px;">' +
+            State.states[cur] +
+          '</div>';
+
+  /* front / active tab */
+  html += '<div class="tab active" style="left:0; width:140px; z-index:4;">' +
+            'Hotbar ' + cur + (State.replace.active ? ' ⚙' : '') +
+          '</div>';
+
+  return html + '</div>';
+}
+
+function hotbar_slots() {
+  var bar = State.current;
+  var html = '';
+  for (var i = 1; i <= State.slots_per_hotbar; i++) {
+    var op = State.bindings[bar][i] || '— none —';
+    html += '<div class="slot" ' +
+              'onclick="button_click(\'hotbar\',' + i + ')" ' +
+              'title="Slot ' + i + ': ' + op + '">' +
+              '<span class="slot_num">' + i + '</span>' +
+            '</div>';
+  }
+  return html;
+}
+
+function hotbar_nav() {
+  return '<div id="hotbar_nav">' +
+           '<div class="nav_btn" onclick="button_click(\'nav\',1)" title="Previous hotbar">◀</div>' +
+           '<div class="nav_btn wide" onclick="button_click(\'nav\',2)" title="Toggle last-used hotbar">↺</div>' +
+           '<div id="hotbar_counter">' + State.current + ' / ' + State.hotbar_count + '</div>' +
+           '<div class="nav_btn" onclick="button_click(\'nav\',3)" title="Next hotbar">▶</div>' +
+         '</div>';
+}
+
+/* =========================================================================
+   6. RENDERING
+   ========================================================================= */
+function render_all() {
+  render_left_menu();
+  render_bottom_menu();
+}
+
+function render_left_menu() {
+  LeftMenu.items = build_left_menu_items();
+  document.getElementById('left_host').innerHTML = left_menu(LeftMenu.items);
+}
+
+function render_bottom_menu() {
+  document.getElementById('bottom_host').innerHTML = bottom_menu();
+}
+
+/* =========================================================================
+   7. HOTBAR SWITCHING
+   ========================================================================= */
+function switch_to_hotbar(h) {
+  if (h < 1) h = State.hotbar_count;
+  if (h > State.hotbar_count) h = 1;
+  if (h === State.current) return;
+
+  State.recent = [h].concat(State.recent.filter(function(x){ return x !== h; }))
+                    .slice(0, 10);
+  State.current = h;
+  render_all();
+}
+
+function switch_to_hotbar_key(n) {
+  var h = State.hotbar_keymap[n];
+  if (h) switch_to_hotbar(h);
+}
+
+function hotbar_step(delta)       { switch_to_hotbar(State.current + delta); }
+function hotbar_toggle_recent()   {
+  if (State.recent.length < 2) return;
+  switch_to_hotbar(State.recent[1]);
+}
+
+/* =========================================================================
+   8. REPLACE MODE
+   ========================================================================= */
+function replace_begin() {
+  State.replace = { active: true, phase: 'await-combo', target: null };
+  render_all();
+}
+
+function replace_target_hotbar(n) {
+  State.replace.phase  = 'await-hotbar';
+  State.replace.target = { kind: 'hotbar', key: n };
+  render_all();
+}
+
+function replace_target_slot(n) {
+  State.replace.phase  = 'await-op';
+  State.replace.target = { kind: 'slot', slot: n };
+  render_all();
+}
+
+function replace_pick_hotbar(h) {
+  if (State.replace.target && State.replace.target.kind === 'hotbar') {
+    State.hotbar_keymap[State.replace.target.key] = h;
+  }
+  finish_replace();
+}
+
+function replace_pick_op(op) {
+  if (State.replace.target && State.replace.target.kind === 'slot') {
+    State.bindings[State.current][State.replace.target.slot] = op;
+  }
+  finish_replace();
+}
+
+function finish_replace() {
+  State.replace = { active: false, phase: null, target: null };
+  render_all();
+}
+function cancel_replace() { finish_replace(); }
+
+/* =========================================================================
+   9. KEYBOARD
+   ========================================================================= */
+function call_hotbar_slot(n) {
+  var op = State.bindings[State.current][n] || '— none —';
+  alert('Call · Hotbar ' + State.current + ' slot ' + n + ' → ' + op);
+}
+
+function on_keydown(e) {
+  var ctrl = e.ctrlKey && !e.altKey && !e.metaKey;
+  var alt  = e.altKey && !e.ctrlKey && !e.metaKey;
+  if (!e.shiftKey || (!ctrl && !alt)) return;
+
+  /* Ctrl+Shift+Space — enter replace mode */
+  if (ctrl && e.code === 'Space') {
+    e.preventDefault();
+    replace_begin();
+    return;
+  }
+
+  var m = /^Digit([0-9])$/.exec(e.code);
+  if (!m) return;
+  var n = parseInt(m[1], 10);
+  if (n === 0) n = 10;
+
+  if (ctrl) {
+    e.preventDefault();
+    if (State.replace.active) {
+      if (State.replace.phase === 'await-combo') replace_target_slot(n);
+      else                                       cancel_replace();
+    } else {
+      call_hotbar_slot(n);
+    }
+  } else if (alt) {
+    e.preventDefault();
+    if (State.replace.active) {
+      if (State.replace.phase === 'await-combo') replace_target_hotbar(n);
+      else                                       cancel_replace();
+    } else {
+      switch_to_hotbar_key(n);
+    }
+  }
+}
+
+/* =========================================================================
+   10. BOOT
+   ========================================================================= */
+document.addEventListener('keydown', on_keydown);
+</script>
+</head>
+
+<body>
+
+  <!-- ================= TOP MENU ================= -->
+  <script>document.write(top_menu(top_menu_contents()));</script>
+
+  <!-- ================= MIDDLE ================= -->
+  <div id="middle">
+    <div id="left_host"></div>
+
+    <div id="main_panel">
+      <div class="memo-container">
+        <label for="memoInput">📝 Memo Entry</label>
+        <textarea id="memoInput" placeholder="<html><head></head><body></body></html>"></textarea>
+        <div class="status" id="statusMessage">Saved locally</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= BOTTOM MENU ================= -->
+  <div id="bottom_host"></div>
+
+  <!-- boot: render menus now that the hosts exist -->
+  <script>render_all();</script>
+
+</body>
+</html>
